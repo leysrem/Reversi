@@ -1,0 +1,1207 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Reversi</title>
+    <link rel="stylesheet" media="screen" type="text/css" href="style.css"/>
+    <script src="https://kit.fontawesome.com/217c9c02d9.js" crossorigin="anonymous"></script>
+<h1> <span id="title">Я</span>eversi </h1>
+
+    <script>
+    
+    { 
+        var NbrCases = 8 ;             //nbr de cases
+        var CouleurTapis = '#2E8B57';   
+        var CouleurPionBlanc = '#FFFFFF';
+        var CouleurPionNoir = '#000000';
+        var CouleurPionSelected = '#FF7000';
+
+        // var theCanvas = null ; // Canvas du jeu
+        var context = null ;    // contexte 2d du canvas unique
+        var canvasWidth , canvasHeight,
+        canvasTailleCase=80,           // taille d'une case (en pixel)
+        canvasDecalX , canvasDecalY; //decalage des bords
+        
+        
+            
+
+        thePlayer = null ;          // le joueur à jouer
+        theGame= null;    // l'état du jeu
+        var CoulPion;
+    }
+
+    window.onload = function() { 
+            c = document.getElementById('myCanvas');
+            c.width = canvasTailleCase*NbrCases;
+            c.height = canvasTailleCase*NbrCases;
+
+            if(!c)
+            {
+                alert("Impossible de récupérer le canvas");
+                return;
+            }
+            ctx = c.getContext('2d');
+            if(!ctx)
+            {
+                alert("Impossible de récupérer le context du canvas");
+                return;
+            }
+        initGame();
+        
+    }
+    
+      // trace la damier avec 4 pions ( 2 noirs , 2 blancs)
+    function tracerDamier() {     
+        for( var i = 0 ; i < NbrCases ; i++ ) {
+            for( var j = 0 ; j < NbrCases ; j++ ) {
+                tracerCase(i,j);
+
+                switch ( theGame[i][j] ) {
+                    case 0 : coulPion = null ; break ;
+                    case 1 : coulPion = CouleurPionBlanc ; break ;
+                    case 2 : coulPion = CouleurPionNoir  ; break ;
+                }
+                if (coulPion) {
+                    tracerRond(i,j,coulPion);
+                }
+            }
+        }
+    }
+
+
+    function initGame() { // Initialise le diamier 
+        thePlayer = 1 ;
+        theGame = new Array() ;
+        for (var i=0 ; i < NbrCases ; i++ ) {
+            theGame[i] = new Array();
+            for (var j=0 ; j < NbrCases ; j++ ) {
+                theGame[i][j]=0;
+            }
+        }
+        
+        theGame[3][3]=2; // en haut à gauche
+        theGame[4][3]=1; // en haut à droite
+        theGame[3][4]=1; // en bas à gauche
+        theGame[4][4]=2; // en bas à  droite
+        
+      /*  //-- Place les pions au milieu du damier quelque soit le nombres de cases
+        theGame[NbrCases/2-1][NbrCases/2-1]=2; // en haut a gauche
+        theGame[NbrCases/2][NbrCases/2-1]=1; // en haut a droite
+        theGame[NbrCases/2-1][NbrCases/2]=1; // en bas a gauche
+        theGame[NbrCases/2][NbrCases/2]=2; // en bas a droite */
+        
+        tracerDamier();
+        
+        c.addEventListener('mousedown',GetPosition,false);
+        
+              
+    }
+        
+      // Tracer un carré en positions x y et ou la couleur est prédéfinit
+    function tracerCase(x,y) { 
+     ctx.beginPath();
+     ctx.fillStyle = CouleurTapis;
+     ctx.rect(x*canvasTailleCase, y*canvasTailleCase, canvasTailleCase, canvasTailleCase);
+     ctx.fill();
+     ctx.stroke();
+     ctx.closePath();
+    }
+ 
+    // Tracer un cercle en position x y et place en paramètre une couleur
+    function tracerRond(x , y, CoulPion) { 
+    ctx.beginPath();
+    ctx.fillStyle = CoulPion;
+    ctx.arc(x*canvasTailleCase+canvasTailleCase/2,y*canvasTailleCase+canvasTailleCase/2, canvasTailleCase*0.4,0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.closePath();
+    }
+
+    // Récupère les cordonnées x,y à chaque clique de la souris
+    // lance la fonction EtatPlayer a chaque clique de la souris
+    // lance la fonction Etat Jeu à chaque clique de la souris
+    function GetPosition(event) { 
+        var x = event.x;
+        var y = event.y;
+
+        x -= c.offsetLeft;
+        y -= c.offsetTop;
+
+        coordX = x / canvasTailleCase;
+        i = Math.floor(coordX);
+        coordY =  y / canvasTailleCase;
+        j = Math.floor(coordY);
+ 
+        console.log("theGame :",theGame[i][j]);
+        
+        EtatPlayer();
+        
+        EtatJeu();
+        
+    }
+        
+ // gère l'état du joueur à chaque coup
+ // Lancer la fonction gestion reversi pour chaque joueur
+    function EtatPlayer() {
+    
+        
+    if (thePlayer == 1) { 
+             
+             document.getElementById("Player2").innerHTML = " <i class='fas fa-caret-right'></i> Noir <span   class='Noir' id='PointPLayer2'> : 2 </span>";
+             document.getElementById("Player1").innerHTML = " Blanc <span class='Blanc' id='PointPLayer1'> : 2 </span>";
+             GestionReversiBlanc();
+            
+              console.log("Joueur : ",thePlayer);
+        } else {
+            
+               document.getElementById("Player1").innerHTML = "<i class='fas fa-caret-right'></i> Blanc <span class='Blanc' id='PointPLayer1'> : 2 </span>";
+               document.getElementById("Player2").innerHTML = " Noir <span class='Noir' id='PointPLayer2'> : 2 </span>";
+               GestionReversiNoir();
+            
+            console.log("Joueur : ",thePlayer);
+        }
+        
+        
+    }
+        
+    function GestionReversiBlanc() {      
+        
+    var AllieTrouver = 0;
+           if (theGame[i][j] == 0 ){     // vérif si c'est une case vide  
+               
+            tracerRond(i,j,CouleurPionBlanc);
+            
+            theGame[i][j] = thePlayer;
+               
+             for (var x = i-1 ; x >= 0; x--) // Verif pion a droite du pion allié
+            
+            {
+                if (theGame[x][j] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                if (theGame[x][j] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j);
+                        console.log("break");
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    } 
+            }
+               
+               
+            for (var x = i-1 ; x >= 0; x--)  // pion a droite du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[x][j] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[x][j] == 2)  {
+                                    
+                     console.log("Pion a droite") ;
+                             
+                     console.log("x : ",x);
+                
+                     theGame[x][j] == thePlayer;
+                        
+                     tracerRond(x,j,CouleurPionBlanc);  
+                
+                     theGame[x][j] = thePlayer;
+                         
+                     console.log("theGame :",theGame[x][j]);
+                } 
+              }     
+                    
+            } 
+               
+    for (var x = i+1 ; x <= 7; x++) // Verif pion a gauche du pion allié
+            
+            {
+                if (theGame[x][j] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                
+                if (theGame[x][j] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }  
+            }
+               
+               
+            for (var x = i+1 ; x <= 7; x++)  // pion a gauche du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[x][j] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[x][j] == 2)  {
+                                    
+                    console.log("Pion a gauche") ;
+                             
+                     console.log("x : ",x);
+                
+                    theGame[x][j] == thePlayer;
+                        
+                    tracerRond(x,j,CouleurPionBlanc);  
+                
+                    theGame[x][j] = thePlayer;
+                         
+                    console.log("theGame :",theGame[x][j]);
+                } 
+              }     
+                    
+            }
+       
+               
+    
+     for (var y = j-1 ; y >= 0; y--) // Verif pion en bas du pion allié
+            
+            {
+                if (theGame[i][y] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                
+                if (theGame[i][y] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i,"y :",y);
+                        console.log("break");
+                        break;
+                    } else {
+                        AllieTrouver = 0;
+                    }  
+            }
+    
+            for (var y = j-1 ; y >= 0; y--)  // pion en bas du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    AllieTrouver = 0;
+                    break;
+                }
+                
+                if (theGame[i][y] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                          
+                        if (theGame[i][y] == 2)  {
+                                    
+                        console.log("Pion en bas");
+                            
+                     console.log("y : ",y);
+                
+                    theGame[i][y] == thePlayer;
+                        
+                    tracerRond(i,y,CouleurPionBlanc);  
+                
+                    theGame[i][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i][y]);
+                } 
+              }     
+                    
+            }
+    
+     for (var y = j+1 ; y <= 7; y++) // Verif pion en haut du pion allié
+            
+            {
+                if (theGame[i][y] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                
+                if (theGame[i][y] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i,"y :",y);
+                        console.log("break");
+                        break;
+                    }  else {
+                        AllieTrouver = 0;
+                    } 
+            }
+    
+     for (var y = j+1 ; y <= 7; y++)  // pion en haut du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[i][y] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[i][y] == 2)  {
+                                    
+                    console.log("Pion en haut") ;
+                             
+                    console.log("y : ",y);
+                
+                    theGame[i][y] == thePlayer;
+                        
+                    tracerRond(i,y,CouleurPionBlanc);  
+                
+                    theGame[i][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i][y]);
+                } 
+              }     
+                    
+            }
+                 var X= 0;
+     
+     var J = 0;
+               
+     for (var y = j-1 ; y >= 0; y--) // Verif pion bas droite du pion allié
+          
+            {
+                 X = X -1; 
+                
+                if (x+X == 0 ) {
+                    break;
+                }
+              
+                if (theGame[i+X][y] == 0) {
+                    break; 
+                }
+                
+                if (theGame[i+X][y] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i+X,"y :",y);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+                
+            }
+              X = 0; 
+               
+            for (var y = j-1 ; y >= 0; y--)  // pion bas droite du pion allie
+            
+            {
+                X = X -1; 
+                
+                if (x+X == 0 ) {
+                    break;
+                }
+                
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[i+X][y] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } 
+                    
+                    if (AllieTrouver == 1) { 
+                        
+                        if (theGame[i+X][y] == 2)  {
+                            
+                    console.log("pion en bas droite")
+                             
+                     console.log("y : ",y);
+                
+                    theGame[i+X][y] == thePlayer;
+                            
+                    console.log("x =",i+X,"y :",y);
+                        
+                    tracerRond(i+X,y,CouleurPionBlanc);  
+                
+                    theGame[i+X][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i+X][y]);
+                } 
+              }     
+                    
+            }
+             X =0;
+              
+           for (var x = i-1 ; x >= 0; x--) // Verif pion haut droite du pion allié
+          
+            {
+                 J = J +1; 
+                
+              if (theGame[x][j+J] == 0) {
+                    break; 
+                }
+                
+                if (theGame[x][j+J] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j+J);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+            }
+              J = 0; 
+               
+               for (var x = i-1 ; x >= 0; x--)  // pion a haut droite du pion allie
+            
+            {
+                J = J +1;
+                
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[x][j+J] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[x][j+J] == 2)  {
+                                    
+                    console.log("Pion haut droite") ;
+                             
+                     console.log("x : ",x);
+                
+                    theGame[x][j+J] == thePlayer;
+                        
+                    tracerRond(x,j+J,CouleurPionBlanc);  
+                
+                    theGame[x][j+J] = thePlayer;
+                         
+                    console.log("theGame :",theGame[x][j+J]);
+                } 
+              }     
+                    
+            }
+               J = 0;
+               
+               for (var y = j+1 ; y <= 7; y++) // Verif pion haut gauche du pion allié
+          
+            {
+                 X = X +1; 
+                
+                if (x+X == 7) {
+                    break;
+                }
+              
+                if (theGame[i+X][y] == 0) {
+                    break; 
+                }
+                
+                if (theGame[i+X][y] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i+X,"y :",y);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+            }
+              X = 0; 
+               
+                for (var y = j+1 ; y <= 7; y++)  // pion haut gauche du pion allie
+            
+            {
+                X = X +1; 
+               
+                if (x+X == 7) {
+                    break;
+                }
+                
+                
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                if (theGame[i+X][y] == 1) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } 
+                    
+                
+                    if (AllieTrouver == 1) { 
+                        
+                        if (theGame[i+X][y] == 2)  {
+                            
+                    console.log("pion en haut gauche")
+                             
+                     console.log("y : ",y);
+                
+                    theGame[i+X][y] == thePlayer;
+                            
+                    console.log("x =",i+X,"y :",y);
+                        
+                    tracerRond(i+X,y,CouleurPionBlanc);  
+                
+                    theGame[i+X][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i+X][y]);
+                } 
+              }     
+                    
+            }
+             X = 0;
+
+               for (var x = i+1 ; x <= 7; x++) // Verif pion bas gauche du pion allié
+          
+            {
+                 J = J -1; 
+              
+                if (theGame[x][j+J] == 0) {
+                    break; 
+                }
+                
+                if (theGame[x][j+J] == 1) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j+J);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+            }
+
+            J = 0; 
+            for (var x = i+1 ; x <= 7; x++)  // pion a haut gauche du pion allie
+            {
+                J = J -1;
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                if (theGame[x][j+J] == 1) 
+                    {        
+                         console.log("break");
+                         break;
+                    } if (AllieTrouver == 1) { 
+                        if (theGame[x][j+J] == 2)  {    
+                        console.log("Pion bas gauche") ;
+                        console.log("x : ",x);
+                        theGame[x][j+J] == thePlayer;
+                            
+                        tracerRond(x,j+J,CouleurPionBlanc);  
+                            
+                        theGame[x][j+J] = thePlayer;
+                        console.log("theGame :",theGame[x][j+J]);
+                        } 
+                    }         
+            }
+               J = 0;
+           
+            thePlayer = 2;
+               
+           } else if (theGame[i][j] == 1 ) { // // tant que le coup n'est pas valide le joueur peut rejouer
+               theGame[i][j] == 1;
+               console.log("Mauvaise case ! rejouez")
+               thePlayer = 1;
+               document.getElementById("Player1").innerHTML = "<i class='fas fa-caret-right'></i> Blanc <span class='Blanc' id='PointPLayer1'> : 2 </span>";
+               document.getElementById("Player2").innerHTML = " Noir <span class='Noir' id='PointPLayer1'> : 2 </span>";
+           } else {
+               theGame[i][j] == 2;
+               thePlayer = 1;
+               document.getElementById("Player1").innerHTML = "<i class='fas fa-caret-right'></i> Blanc <span class='Blanc' id='PointPLayer1'> : 2 </span>";
+               document.getElementById("Player2").innerHTML = " Noir <span class='Noir' id='PointPLayer1'> : 2 </span>";
+           }
+    console.log("===============================================");
+} // gère toutes les règles du reversi pour les pions blancs
+ 
+
+    function GestionReversiNoir() {      
+        
+    var AllieTrouver = 0;
+           if (theGame[i][j] == 0 ){     // vérif si c'est une case vide  
+               
+            tracerRond(i,j,CouleurPionNoir);
+            
+            theGame[i][j] = thePlayer;
+               
+             for (var x = i-1 ; x >= 0; x--) // Verif pion a droite du pion allié
+            
+            {
+                if (theGame[x][j] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                if (theGame[x][j] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j);
+                        console.log("break");
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    } 
+            }
+               
+               
+            for (var x = i-1 ; x >= 0; x--)  // pion a droite du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[x][j] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[x][j] == 1)  {
+                                    
+                     console.log("Pion a droite") ;
+                             
+                     console.log("x : ",x);
+                
+                     theGame[x][j] == thePlayer;
+                        
+                     tracerRond(x,j,CouleurPionNoir);  
+                
+                     theGame[x][j] = thePlayer;
+                         
+                     console.log("theGame :",theGame[x][j]);
+                } 
+              }     
+                    
+            } 
+               
+    for (var x = i+1 ; x <= 7; x++) // Verif pion a gauche du pion allié
+            
+            {
+                if (theGame[x][j] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                
+                if (theGame[x][j] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }  
+            }
+               
+               
+            for (var x = i+1 ; x <= 7; x++)  // pion a gauche du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[x][j] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[x][j] == 1)  {
+                                    
+                    console.log("Pion a gauche") ;
+                             
+                     console.log("x : ",x);
+                
+                    theGame[x][j] == thePlayer;
+                        
+                    tracerRond(x,j,CouleurPionNoir);  
+                
+                    theGame[x][j] = thePlayer;
+                         
+                    console.log("theGame :",theGame[x][j]);
+                } 
+              }     
+                    
+            }
+       
+               
+    
+     for (var y = j-1 ; y >= 0; y--) // Verif pion en bas du pion allié
+            
+            {
+                if (theGame[i][y] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                
+                if (theGame[i][y] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i,"y :",y);
+                        console.log("break");
+                        break;
+                    } else {
+                        AllieTrouver = 0;
+                    }  
+            }
+    
+            for (var y = j-1 ; y >= 0; y--)  // pion en bas du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    AllieTrouver = 0;
+                    break;
+                }
+                
+                if (theGame[i][y] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                          
+                        if (theGame[i][y] == 1)  {
+                                    
+                        console.log("Pion en bas");
+                            
+                     console.log("y : ",y);
+                
+                    theGame[i][y] == thePlayer;
+                        
+                    tracerRond(i,y,CouleurPionNoir);  
+                
+                    theGame[i][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i][y]);
+                } 
+              }     
+                    
+            }
+    
+     for (var y = j+1 ; y <= 7; y++) // Verif pion en haut du pion allié
+            
+            {
+                if (theGame[i][y] == 0) {
+                    AllieTrouver = 0;
+                    break; 
+                }
+                
+                if (theGame[i][y] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i,"y :",y);
+                        console.log("break");
+                        break;
+                    }  else {
+                        AllieTrouver = 0;
+                    } 
+            }
+    
+     for (var y = j+1 ; y <= 7; y++)  // pion en haut du pion allie
+            
+            {
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[i][y] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[i][y] == 1)  {
+                                    
+                    console.log("Pion en haut") ;
+                             
+                    console.log("y : ",y);
+                
+                    theGame[i][y] == thePlayer;
+                        
+                    tracerRond(i,y,CouleurPionNoir);  
+                
+                    theGame[i][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i][y]);
+                } 
+              }     
+                    
+            }
+        var X= 0;
+     
+     var J = 0;
+               
+     for (var y = j-1 ; y >= 0; y--) // Verif pion bas droite du pion allié
+          
+            {
+                 X = X -1; 
+                
+                if (x+X == 0 ) {
+                    break;
+                }
+              
+                if (theGame[i+X][y] == 0) {
+                    break; 
+                }
+                
+                if (theGame[i+X][y] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i+X,"y :",y);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+                
+            }
+              X = 0; 
+               
+            for (var y = j-1 ; y >= 0; y--)  // pion bas droite du pion allie
+            
+            {
+                X = X -1; 
+                
+                if (x+X == 0 ) {
+                    break;
+                }
+                
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[i+X][y] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } 
+                    
+                    if (AllieTrouver == 1) { 
+                        
+                        if (theGame[i+X][y] == 1)  {
+                            
+                    console.log("pion en bas droite")
+                             
+                     console.log("y : ",y);
+                
+                    theGame[i+X][y] == thePlayer;
+                            
+                    console.log("x =",i+X,"y :",y);
+                        
+                    tracerRond(i+X,y,CouleurPionNoir);  
+                
+                    theGame[i+X][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i+X][y]);
+                } 
+              }     
+                    
+            }
+             X =0;
+              
+           for (var x = i-1 ; x >= 0; x--) // Verif pion haut droite du pion allié
+          
+            {
+                 J = J +1; 
+                
+              if (theGame[x][j+J] == 0) {
+                    break; 
+                }
+                
+                if (theGame[x][j+J] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j+J);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+            }
+              J = 0; 
+               
+               for (var x = i-1 ; x >= 0; x--)  // pion a haut droite du pion allie
+            
+            {
+                J = J +1;
+                
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                
+                if (theGame[x][j+J] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } if (AllieTrouver == 1) { 
+                        
+                        if (theGame[x][j+J] == 1)  {
+                                    
+                    console.log("Pion haut droite") ;
+                             
+                     console.log("x : ",x);
+                
+                    theGame[x][j+J] == thePlayer;
+                        
+                    tracerRond(x,j+J,CouleurPionNoir);  
+                
+                    theGame[x][j+J] = thePlayer;
+                         
+                    console.log("theGame :",theGame[x][j+J]);
+                } 
+              }     
+                    
+            }
+               J = 0;
+               
+               for (var y = j+1 ; y <= 7; y++) // Verif pion haut gauche du pion allié
+          
+            {
+                 X = X +1;
+                
+                if (x+X == 7) {
+                    break;
+                }
+              
+                if (theGame[i+X][y] == 0) {
+                    break; 
+                }
+                
+                if (theGame[i+X][y] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",i+X,"y :",y);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+            }
+              X = 0; 
+               
+                for (var y = j+1 ; y <= 7; y++)  // pion haut gauche du pion allie
+            
+            {
+                X = X +1; 
+                
+                if (x+X == 7) {
+                    break;
+                }
+                
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                if (theGame[i+X][y] == 2) 
+                      
+                    {        
+                         console.log("break");
+                         break;
+                        
+                    } 
+                    
+                
+                    if (AllieTrouver == 1) { 
+                        
+                        if (theGame[i+X][y] == 1)  {
+                            
+                    console.log("pion en haut gauche")
+                             
+                     console.log("y : ",y);
+                
+                    theGame[i+X][y] == thePlayer;
+                            
+                    console.log("x =",i+X,"y :",y);
+                        
+                    tracerRond(i+X,y,CouleurPionNoir);  
+                
+                    theGame[i+X][y] = thePlayer;
+                         
+                    console.log("theGame :",theGame[i+X][y]);
+                } 
+              }     
+                    
+            }
+             X = 0;
+
+               for (var x = i+1 ; x <= 7; x++) // Verif pion bas gauche du pion allié
+          
+            {
+                 J = J -1; 
+              
+                if (theGame[x][j+J] == 0) {
+                    break; 
+                }
+                
+                if (theGame[x][j+J] == 2) 
+                      
+                    {        
+                        AllieTrouver = 1;
+                        console.log("AllieTrouver =",AllieTrouver,"x =",x,"y :",j+J);
+                        break;
+                    
+                    } else {
+                        AllieTrouver = 0;
+                    }
+            }
+
+            J = 0; 
+            for (var x = i+1 ; x <= 7; x++)  // pion a haut droite du pion allie
+            {
+                J = J -1;
+                if (AllieTrouver == 0) {
+                    break;
+                }
+                if (theGame[x][j+J] == 2) 
+                    {        
+                         console.log("break");
+                         break;
+                    } if (AllieTrouver == 1) { 
+                        if (theGame[x][j+J] == 1)  {    
+                        console.log("Pion bas gauche") ;
+                        console.log("x : ",x);
+                        theGame[x][j+J] == thePlayer;
+                        tracerRond(x,j+J,CouleurPionNoir);  
+                        theGame[x][j+J] = thePlayer;
+                        console.log("theGame :",theGame[x][j+J]);
+                        } 
+                    }         
+            }
+               J = 0;
+      
+                thePlayer = 1;
+           } else if (theGame[i][j] ==1 ) { // tant que le coup n'est pas valide le joueur peut rejouer
+               theGame[i][j] == 1;
+               console.log("mauvaise case ! rejouez");
+               thePlayer = 2;
+               document.getElementById("Player2").innerHTML = "<i class='fas fa-caret-right'></i> Noir <span class='Noir' id='PointPLayer2'> : 2 </span>";
+               document.getElementById("Player1").innerHTML = " Blanc <span class='Blanc' id='PointPLayer1'> : 2 </span>";
+           } else {
+               theGame[i][j] == 2;
+               thePlayer = 2;
+               document.getElementById("Player2").innerHTML = "<i class='fas fa-caret-right'></i> Noir <span class='Noir' id='PointPLayer2'> : 2 </span>";
+               document.getElementById("Player1").innerHTML = " Blanc <span class='Blanc' id='PointPLayer1'> : 2 </span>";
+           }
+    
+    console.log("===============================================");
+} // gère toutes les règles du reversi pour les pions noirs
+        
+        
+ // scan le damier a chaque clique et affiche le nombres de pions blancs et noirs
+ // Calcul le nombres de case vide
+ // lorsqu'il n'y a plus de case vide donne le gagnant
+    function EtatJeu() {
+    var NbrBlanc = 0;
+    var NbrNoir = 0;
+    var NbrCaseVide = 0;
+    
+    for (i = 0 ; i < NbrCases ; i++) {
+        for (j = 0; j < NbrCases; j++) {  
+            if (theGame[i][j] == 1) {
+               NbrBlanc = NbrBlanc + 1; 
+            } else if (theGame[i][j] == 2) {
+                NbrNoir = NbrNoir + 1;
+            }
+            if (theGame[i][j] == 0) {
+                NbrCaseVide = NbrCaseVide+1; 
+             }
+        }
+    }
+    
+  if (NbrCaseVide ==0&&NbrNoir>NbrBlanc) {
+      console.log("Partie fini les noir gagnent !")
+  }
+    
+  if (NbrCaseVide ==0&&NbrNoir<NbrBlanc) {
+      console.log("Partie fini les blancs gagnent !")
+  }
+    
+  document.getElementById("PointPLayer1").innerHTML = ": "+NbrBlanc;
+  document.getElementById("PointPLayer2").innerHTML = ": "+NbrNoir;
+    
+  
+}
+
+       
+  
+    </script>
+
+</head>
+
+<body>
+    <main>
+        <canvas id="myCanvas" style="border:6px solid #000000;">
+            Message pour les navigateurs ne supportant pas encore canvas.
+        </canvas>
+        <div>
+        <table> 
+           <tr> 
+               <td> <h3 class="Blanc" id="Player1"><i class="fas fa-caret-right"></i>Blanc <span class="Blanc" id="PointPLayer1"> : 2 </span> </h3> </td>
+               <td> <h3 class="Noir" id="Player2">Noir <span class="Noir" id="PointPLayer2"> : 2 </span> </h3> </td>
+            </tr> 
+        </table>
+        </div>
+    </main>
+</body>
+</html>
